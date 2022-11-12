@@ -9,6 +9,8 @@ export type SleepJournal = {
 
 const storageKey = 'sleep-journal';
 
+const currentDateKey = getDate(new Date());
+
 // const storage: SleepJournal = JSON.parse(localStorage.getItem(storageKey) || '{}');
 const storage: SleepJournal = {};
 localStorage.setItem(storageKey, JSON.stringify(storage));
@@ -27,14 +29,18 @@ export class Main extends LitElement {
   constructor() {
     super();
     console.log(getDate(new Date()))
-    setTimeout(()=>{if(this.startTime)this.startTime.value = '14:32'}, 2000);
   }
 
   connectedCallback() {
     super.connectedCallback();
     setTimeout(()=>{
-    // TODO set init value from storage to input fields (start, end)
-    }))
+      if(currentDateKey in storage) {
+        if(this.startTime && this.endTime){
+          this.startTime.value = storage[currentDateKey][this.count].start;
+          this.endTime.value = storage[currentDateKey][this.count].end;
+        }
+      }
+    }, 500);
   }
 
   @query('.start')
@@ -44,15 +50,28 @@ export class Main extends LitElement {
   endTime?:HTMLInputElement;
 
   @state()
-  textFlag = true;
+  wakeUpTime: string = 'Еще не было первого сна';
 
   saveData() {
     if(this.startTime && this.endTime) {
       console.log(this.startTime.value, this.endTime.value);
-      storage[this.count] = {start: this.startTime.value, end: this.endTime.value};
-      // localStorage.setItem(storageKey, JSON.stringify(storage));
+      storage[currentDateKey] = {[this.count]: {start: this.startTime.value, end: this.endTime.value}};
+      localStorage.setItem(storageKey, JSON.stringify(storage));
       this.count += 1;
+      this.startTime.value = '';
+      this.endTime.value = '';
+      this.getWakeUpTime(this.count - 1);
     }
+  }
+
+  getWakeUpTime(count: number) {
+    if(count>1) {
+      const res = getHours(new Date(`${currentDateKey}, ${storage[currentDateKey][count].start}`),
+          new Date(`${currentDateKey}, ${storage[currentDateKey][count].end}`));
+      console.log(res);
+      this.wakeUpTime = `${Math.floor(res)} часов ${(res - Math.floor(res)) * 60} минут`;
+    }
+    else this.wakeUpTime = 'Еще не было первого сна';
   }
 
   protected render(): unknown {
@@ -72,6 +91,9 @@ export class Main extends LitElement {
           <br>
           <button type="button" @click="${this.saveData}">Готово</button>
         </div>
+        <br>
+        <h2>Время бодрствования</h2>
+        <div>${this.wakeUpTime}</div>
       </div>
     `;
   }
